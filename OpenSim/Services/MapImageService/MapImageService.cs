@@ -79,13 +79,22 @@ namespace OpenSim.Services.MapImageService
                     {
                         m_TilesStoragePath = serviceConfig.GetString("TilesStoragePath", m_TilesStoragePath);
                         //memory cache JPEG tile with just water.
-                        m_WaterBitmap = new Bitmap(IMAGE_WIDTH, IMAGE_WIDTH, PixelFormat.Format24bppRgb);
-                        FillImage(m_WaterBitmap, m_Watercolor);
-                        using (MemoryStream ms = new MemoryStream())
+                        try
                         {
-                            m_WaterBitmap.Save(ms, ImageFormat.Jpeg);
-                            ms.Seek(0, SeekOrigin.Begin);
-                            m_WaterJPEGBytes = ms.ToArray();
+                            m_WaterBitmap = new Bitmap(IMAGE_WIDTH, IMAGE_WIDTH, PixelFormat.Format24bppRgb);
+                            FillImage(m_WaterBitmap, m_Watercolor);
+                            using (MemoryStream ms = new MemoryStream())
+                            {
+                                m_WaterBitmap.Save(ms, ImageFormat.Jpeg);
+                                ms.Seek(0, SeekOrigin.Begin);
+                                m_WaterJPEGBytes = ms.ToArray();
+                            }
+                        }
+                        catch (Exception e)
+                        {
+                            m_log.WarnFormat("[MAP IMAGE SERVICE]: Failed to initialize GDI+: {0}", e.Message);
+                            m_WaterBitmap = null;
+                            m_WaterJPEGBytes = Array.Empty<byte>();
                         }
                     }
                 }

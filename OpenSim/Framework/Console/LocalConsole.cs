@@ -481,6 +481,17 @@ namespace OpenSim.Framework.Console
             m_echo = e;
             int historyLine = m_history.Count;
 
+            if (System.Console.IsInputRedirected)
+            {
+                 string line = System.Console.ReadLine();
+                 if (line == null)
+                 {
+                     Thread.Sleep(1000);
+                     return "";
+                 }
+                 return line;
+            }
+
             lock (m_commandLine)
             {
                 SetCursorLeft(0); // Needed for mono
