@@ -1,3 +1,16 @@
+bin/OpenSim
+bin/OpenSim.ConsoleClient
+bin/OpenSim.ConsoleClient.runtimeconfig.json
+bin/OpenSim.Tools.Configger
+bin/OpenSim.Tools.Configger.runtimeconfig.json
+bin/OpenSim.runtimeconfig.json
+bin/Robust
+bin/Robust.runtimeconfig.json
+bin/pCampBot
+bin/pCampBot.runtimeconfig.json
+compile.sh
+
+
 .project
 .settings
 .gitignore
