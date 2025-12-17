@@ -1,6 +1,9 @@
 using System;
 using OpenMetaverse;
 using System.Threading;
+using log4net.Config;
+using log4net;
+using System.Reflection;
 
 namespace OmvTestHarness
 {
@@ -8,9 +11,13 @@ namespace OmvTestHarness
     {
         static void Main(string[] args)
         {
+            // Configure log4net
+            var logRepository = LogManager.GetRepository(Assembly.GetEntryAssembly());
+            XmlConfigurator.Configure(logRepository, new System.IO.FileInfo("log4net.config"));
+
             string firstName = "Test";
             string lastName = "User";
-            string password = "1234";
+            string password = "password";
             string loginURI = "http://localhost:9000/";
 
             Console.WriteLine($"Attempting to login to {loginURI} as {firstName} {lastName}...");
