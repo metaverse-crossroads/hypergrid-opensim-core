@@ -1757,6 +1757,8 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         /// <param name='timeoutTicks'></param>
         protected void DeactivateClientDueToTimeout(LLClientView client, int timeoutTicks)
         {
+            MatingRitualLogger.Log("SERVER", "UDP", "TIMEOUT", $"Agent: {client.Name}, LastActive: {timeoutTicks}ms ago");
+
             ClientLogoutsDueToNoReceives++;
             if (client.SceneAgent != null)
             {
