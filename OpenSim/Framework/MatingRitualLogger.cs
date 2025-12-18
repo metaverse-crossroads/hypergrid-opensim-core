@@ -11,12 +11,12 @@ namespace OpenSim.Framework
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
         private static string LogPath = "mating_rituals.log";
 
-        public static void Log(string actor, string action, string context = "")
+        public static void Log(string side, string component, string signal, string payload = "")
         {
-            string message = $"[MATING RITUAL] {actor.PadRight(15)} | {action}";
-            if (!string.IsNullOrEmpty(context))
+            string message = $"[MATING RITUAL] [{side}] [{component}] {signal}";
+            if (!string.IsNullOrEmpty(payload))
             {
-                message += $" | {context}";
+                message += $" | {payload}";
             }
 
             // Log to console/standard log for visibility
@@ -25,14 +25,9 @@ namespace OpenSim.Framework
             // Also append to a specific file for the report
             try
             {
-                File.AppendAllText(LogPath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} {message}{Environment.NewLine}");
+                File.AppendAllText(LogPath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} {message}{Environment.NewLine}");
             }
             catch (Exception) { /* Best effort */ }
-        }
-
-        public static void Chapter(string title)
-        {
-            Log("NARRATOR", $"--- {title} ---");
         }
     }
 }

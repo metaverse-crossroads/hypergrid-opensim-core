@@ -1562,8 +1562,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 
                 if (IsClientAuthorized(uccp, out AuthenticateResponse sessionInfo))
                 {
-                    MatingRitualLogger.Chapter("PART II: THE HANDSHAKE");
-                    MatingRitualLogger.Log("Client", "Initiates UDP Connection", $"CircuitCode: {uccp.CircuitCode.Code}");
+                    MatingRitualLogger.Log("SERVER", "UDP", "RECV UseCircuitCode", $"CircuitCode: {uccp.CircuitCode.Code}, Session: {uccp.CircuitCode.SessionID}");
 
                     AgentCircuitData aCircuit = m_circuitManager.GetAgentCircuitData(uccp.CircuitCode.Code);
                     if(!string.IsNullOrEmpty(aCircuit.IPAddress))
@@ -1633,7 +1632,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                 }
                 else
                 {
-                    MatingRitualLogger.Log("Server", "Rejects UDP Connection", "Unauthorized Circuit Code");
+                    MatingRitualLogger.Log("SERVER", "UDP", "REJECT UseCircuitCode", $"Unauthorized Circuit: {uccp.CircuitCode.Code}");
                     // Don't create clients for unauthorized requesters.
                     m_log.WarnFormat(
                         "[LLUDPSERVER]: Ignoring connection request for {0} to {1} with unknown circuit code {2} from IP {3}",
