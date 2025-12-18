@@ -11,7 +11,7 @@ echo '*' > .git/info/exclude
 
 ## 2. Prerequisites
 - Linux Environment
-- .NET 8 SDK
+- .NET 8 SDK (Installed and verified)
 
 ## 3. Build OpenSim
 1.  **Generate Project Files**:
@@ -96,7 +96,23 @@ dotnet build OmvTestHarness/OmvTestHarness.csproj
     Logged out.
     ```
 
-## 7. Lessons Learned / Troubleshooting
+## 7. Mating Rituals Investigation
+We have instrumented OpenSim with a `MatingRitualLogger` to capture the narrative of the client/server connection process.
+
+### Instrumentation Points
+-   **`OpenSim/Services/LLLoginService/LLLoginService.cs`**: Captures the initial login request and authentication (Part I).
+-   **`OpenSim/Region/ClientStack/Linden/UDP/LLUDPServer.cs`**: Captures the `UseCircuitCode` packet and UDP connection establishment (Part II).
+-   **`OpenSim/Region/ClientStack/Linden/UDP/LLClientView.cs`**: Captures the `RegionHandshake`, `AgentMovement`, and initial world data transmission (Parts III & IV).
+
+### Reproduction
+1.  Ensure OpenSim is built with the instrumentation changes.
+2.  Start OpenSim.
+3.  Run the `OmvTestHarness`.
+4.  Inspect `bin/opensim.log` (or console output) for `[MATING RITUAL]` tags.
+5.  A summary of the observed rituals is available in `OmvTestHarness/opensim-0.9.3.libremetaverse-2.0.0.mating_rituals.md`.
+
+## 8. Lessons Learned / Troubleshooting
 -   **libgdiplus**: On systems without `libgdiplus`, OpenSim map generation crashes. Code patches (try-catch blocks) in `VectorRenderModule.cs`, `MapImageService.cs`, and `MapImageModule.cs` prevent the server from crashing, though map tiles won't generate.
 -   **Input Redirection**: Running OpenSim in background causes a CPU loop in `LocalConsole.cs` if `Console.ReadLine()` returns null. A patch in `LocalConsole.cs` handles `IsInputRedirected`.
 -   **Platform Specifics**: Always copy `System.Drawing.Common.dll.linux` on Linux. Do not use the `OpenMetaverse.dll` from `bin/` for client development on Linux .NET 8; use `LibreMetaverse`.
+-   **Git Exclude**: Use `echo '*' > .git/info/exclude` to keep the working directory clean of build artifacts without modifying `.gitignore`.

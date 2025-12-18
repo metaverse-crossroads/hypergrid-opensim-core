@@ -877,6 +877,8 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 
         public void SendRegionHandshake()
         {
+            MatingRitualLogger.Log("SERVER", "UDP", "SEND RegionHandshake", $"Region: {m_scene.RegionInfo.RegionName}");
+
             GetViewerCaps(); // make sure this is up to date
 
             RegionInfo regionInfo = m_scene.RegionInfo;
@@ -999,6 +1001,8 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 
         public unsafe void MoveAgentIntoRegion(RegionInfo regInfo, Vector3 pos, Vector3 look)
         {
+            MatingRitualLogger.Log("SERVER", "UDP", "SEND AgentMovementComplete", $"Pos: {pos}, Look: {look}");
+
             // reset agent update args
             m_thisAgentUpdateArgs.CameraAtAxis.X = float.MinValue;
             m_thisAgentUpdateArgs.lastUpdateTS = 0;
@@ -1565,6 +1569,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         /// <param name="map">heightmap</param>
         public virtual void SendLayerData()
         {
+            MatingRitualLogger.Log("SERVER", "UDP", "SEND LayerData", "Terrain Patches");
             Util.FireAndForget(DoSendLayerData, null, "LLClientView.DoSendLayerData");
         }
 

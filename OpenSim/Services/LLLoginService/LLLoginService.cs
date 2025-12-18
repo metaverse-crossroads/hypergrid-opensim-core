@@ -332,6 +332,8 @@ namespace OpenSim.Services.LLLoginService
         public LoginResponse Login(string firstName, string lastName, string passwd, string startLocation, UUID scopeID,
             string clientVersion, string channel, string mac, string id0, IPEndPoint clientIP)
         {
+            MatingRitualLogger.Log("SERVER", "LOGIN", "RECV XML-RPC login_to_simulator", $"User: {firstName} {lastName}, Viewer: {clientVersion}, Channel: {channel}, IP: {clientIP}");
+
             bool success;
             UUID session = UUID.Random();
 
@@ -457,11 +459,13 @@ namespace OpenSim.Services.LLLoginService
                 UUID secureSession = UUID.Zero;
                 if (string.IsNullOrWhiteSpace(token) || !UUID.TryParse(token, out secureSession))
                 {
+                    MatingRitualLogger.Log("SERVER", "LOGIN", "AUTH FAIL", $"User: {firstName} {lastName}");
                     m_log.InfoFormat(
                         "[LLOGIN SERVICE]: Login failed for {0} {1}, reason: authentication failed",
                         firstName, lastName);
                     return LLFailedLoginResponse.UserProblem;
                 }
+                MatingRitualLogger.Log("SERVER", "LOGIN", "AUTH SUCCESS", $"User: {firstName} {lastName}");
 
                 string PrincipalIDstr = account.PrincipalID.ToString();
                 GridUserInfo guinfo = m_GridUserService.GetGridUserInfo(PrincipalIDstr);
@@ -600,11 +604,13 @@ namespace OpenSim.Services.LLLoginService
                 destination = dest;
                 if (aCircuit == null)
                 {
+                    MatingRitualLogger.Log("SERVER", "LOGIN", "CIRCUIT FAIL", $"Reason: {reason}");
                     m_PresenceService.LogoutAgent(session);
                     m_log.InfoFormat("[LLOGIN SERVICE]: Login failed for {0} {1}, reason: {2}", firstName, lastName, reason);
                     return new LLFailedLoginResponse("key", reason, "false");
 
                 }
+                MatingRitualLogger.Log("SERVER", "LOGIN", "CIRCUIT PROVISION", $"Circuit: {aCircuit.circuitcode}, Region: {destination.RegionName}");
 
                 // only now we can assume a login
                 guinfo = m_GridUserService.LoggedIn(PrincipalIDstr);
@@ -634,6 +640,7 @@ namespace OpenSim.Services.LLLoginService
 
                     m_log.DebugFormat("[LLOGIN SERVICE]: All clear. Sending login response to {0} {1}", firstName, lastName);
 
+                    MatingRitualLogger.Log("SERVER", "LOGIN", "SEND XML-RPC Response", "Success");
                     return response;
                }
             catch (Exception e)
