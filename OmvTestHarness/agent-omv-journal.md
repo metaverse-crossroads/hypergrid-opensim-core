@@ -1,118 +1,53 @@
 # OpenSim & OmvTestHarness Bootstrapping Journal
 
-This guide describes how to build, configure, and verify OpenSim and the client test harness from a fresh checkout of this branch.
+This guide describes how to build, configure, and verify OpenSim and the client test harness using the "Scientific Corroboration" suite.
 
-## 1. Initial Setup
+## 1. Quick Start (Bootstrap)
 
-**Crucial**: Prevent build artifacts from polluting the git status.
+A single script is provided to handle the entire build and configuration process (Prebuild, Build, DLL patching, Config setup).
+
 ```bash
-echo '*' > .git/info/exclude
+# Must be run from the repository root
+./OmvTestHarness/bootstrap.sh
 ```
 
-## 2. Prerequisites
-- Linux Environment
-- .NET 8 SDK (Installed and verified)
+**What it does:**
+1.  Cleans `.git` pollution (via `info/exclude`).
+2.  Runs `./runprebuild.sh`.
+3.  Builds `OpenSim.sln`.
+4.  Builds `OmvTestHarness/OmvTestHarness.csproj`.
+5.  Copies necessary `bin/` config files (`OpenSim.ini`, etc.) and patches `System.Drawing.Common.dll`.
+6.  Configures `OpenSim.ini` for automated Estate setup (Test User / password).
 
-## 3. Build OpenSim
-1.  **Generate Project Files**:
-    ```bash
-    ./runprebuild.sh
-    ```
-    *Note: If `dotnet` is not in PATH, use `DOTNET_ROOT=/path/to/dotnet ./runprebuild.sh`.*
+## 2. Running Scenarios (Scientific Corroboration)
 
-2.  **Build Solution**:
-    ```bash
-    dotnet build --configuration Release OpenSim.sln
-    ```
+To verify the "Mating Rituals" (Client/Server handshake) under various conditions, use the scenario orchestrator:
 
-3.  **Linux Compatibility Fix**:
-    Replace the Windows-specific System.Drawing library with the Linux version provided.
-    ```bash
-    cp bin/System.Drawing.Common.dll.linux bin/System.Drawing.Common.dll
-    ```
-
-## 4. OpenSim Configuration
-Copy the example configuration files and configure for automated startup (non-interactive).
-
-1.  **Copy Examples**:
-    ```bash
-    cp bin/OpenSim.ini.example bin/OpenSim.ini
-    cp bin/config-include/StandaloneCommon.ini.example bin/config-include/StandaloneCommon.ini
-    cp bin/Regions/Regions.ini.example bin/Regions/Regions.ini
-    ```
-
-2.  **Configure Automated Estate Setup**:
-    Edit `bin/OpenSim.ini` to uncomment and set the `[Estates]` section. This prevents the interactive prompt on first run.
-
-    *Command to apply changes:*
-    ```bash
-    sed -i 's/; DefaultEstateName = My Estate/DefaultEstateName = My Estate/' bin/OpenSim.ini
-    sed -i 's/; DefaultEstateOwnerName = FirstName LastName/DefaultEstateOwnerName = Test User/' bin/OpenSim.ini
-    sed -i 's/; DefaultEstateOwnerUUID = .*/DefaultEstateOwnerUUID = 00000000-0000-0000-0000-000000000000/' bin/OpenSim.ini
-    sed -i 's/; DefaultEstateOwnerEMail = .*/DefaultEstateOwnerEMail = test@example.com/' bin/OpenSim.ini
-    sed -i 's/; DefaultEstateOwnerPassword = .*/DefaultEstateOwnerPassword = password/' bin/OpenSim.ini
-    ```
-
-## 5. Client Test Harness (OmvTestHarness)
-The `OmvTestHarness` is a C# console application used to verify connectivity.
-
-### Nuances & Fixes
--   **Library Switch**: The harness uses `LibreMetaverse` (via NuGet) instead of the local `OpenMetaverse.dll` found in `bin/`. The local DLL causes a `PlatformNotSupportedException` (Socket.IOControl) on Linux .NET 8. `LibreMetaverse` 2.0+ is compatible.
--   **Configuration**: Requires `System.Configuration.ConfigurationManager` and `log4net`.
-
-### Build Harness
 ```bash
-dotnet build OmvTestHarness/OmvTestHarness.csproj
+./OmvTestHarness/run_scenarios.sh
 ```
 
-## 6. Verification Run
+**Orchestrated Scenarios:**
+1.  **Success ("The Consummation")**: Standard login, handshake, world entry, and graceful logout.
+2.  **Rejection ("The Closed Door")**: Login attempt with invalid password.
+3.  **Ghost ("The Vanishing")**: Login success (HTTP), but the client vanishes before/during the UDP connection.
+    *   *Observation*: The server reserves the circuit but eventually times out the ghost session. Re-login is blocked until cleanup.
+4.  **Wallflower ("The Passive Observer")**: Client logs in and connects, but explicitly disables `AgentUpdate` (Heartbeat) and `Ping` packets.
+    *   *Observation*: The connection **remains active** as long as the server streams data (e.g., Terrain/Objects) and the client ACKs it. Silence != Disconnection.
 
-1.  **Start OpenSim Server**:
-    Run OpenSim in the background. Redirect output to monitor log.
-    ```bash
-    cd bin
-    dotnet OpenSim.dll > opensim.log 2>&1 &
-    cd ..
-    ```
-    *Wait ~10-15 seconds for startup. Check `bin/opensim.log` for "INITIALIZATION COMPLETE".*
+## 3. The "DX Story" Output
 
-2.  **Run Client Harness**:
-    ```bash
-    cd OmvTestHarness
-    dotnet run
-    ```
+The orchestrator generates Markdown narratives for each scenario in the repository root (e.g., `opensim-0.9.3.libremetaverse-2.0.0.mating_rituals_ghost.md`).
 
-3.  **Expected Output**:
-    The client should connect, log in, display Agent/Session IDs, and then log out.
-    ```
-    Attempting to login to http://localhost:9000/ as Test User...
-    Login Progress: ConnectingToSim - Connecting to simulator...
-    ...
-    Login Successful!
-    Agent ID: ...
-    Session ID: ...
-    Sim Name: Default Region
-    ...
-    Logged out.
-    ```
+These stories use a "Naturalist" tone to describe the protocol exchange as a cooperative dance between Suitor (Client) and Venue (Server).
 
-## 7. Mating Rituals Investigation
-We have instrumented OpenSim with a `MatingRitualLogger` to capture the narrative of the client/server connection process.
+### Example Excerpt (Ghost)
+> **[SERVER] [LOGIN] CIRCUIT PROVISION**: The Venue reserves a spot on the dance floor (Region) and issues a unique ticket (CircuitCode).
+> **[CLIENT] [BEHAVIOR] GHOST**: The Suitor vanishes immediately after the introduction, leaving the Venue waiting.
+> **[SERVER] [UDP] TIMEOUT**: The Venue notices the Suitor has stopped moving (Heartbeat Timeout). The connection fades into silence.
 
-### Instrumentation Points
--   **`OpenSim/Services/LLLoginService/LLLoginService.cs`**: Captures the initial login request and authentication (Part I).
--   **`OpenSim/Region/ClientStack/Linden/UDP/LLUDPServer.cs`**: Captures the `UseCircuitCode` packet and UDP connection establishment (Part II).
--   **`OpenSim/Region/ClientStack/Linden/UDP/LLClientView.cs`**: Captures the `RegionHandshake`, `AgentMovement`, and initial world data transmission (Parts III & IV).
-
-### Reproduction
-1.  Ensure OpenSim is built with the instrumentation changes.
-2.  Start OpenSim.
-3.  Run the `OmvTestHarness`.
-4.  Inspect `bin/opensim.log` (or console output) for `[MATING RITUAL]` tags.
-5.  A summary of the observed rituals is available in `OmvTestHarness/opensim-0.9.3.libremetaverse-2.0.0.mating_rituals.md`.
-
-## 8. Lessons Learned / Troubleshooting
--   **libgdiplus**: On systems without `libgdiplus`, OpenSim map generation crashes. Code patches (try-catch blocks) in `VectorRenderModule.cs`, `MapImageService.cs`, and `MapImageModule.cs` prevent the server from crashing, though map tiles won't generate.
+## 4. Nuances & Fixes
+-   **libgdiplus**: On systems without `libgdiplus`, OpenSim map generation crashes. Code patches (try-catch blocks) in `VectorRenderModule.cs`, `MapImageService.cs`, and `MapImageModule.cs` prevent the server from crashing.
 -   **Input Redirection**: Running OpenSim in background causes a CPU loop in `LocalConsole.cs` if `Console.ReadLine()` returns null. A patch in `LocalConsole.cs` handles `IsInputRedirected`.
--   **Platform Specifics**: Always copy `System.Drawing.Common.dll.linux` on Linux. Do not use the `OpenMetaverse.dll` from `bin/` for client development on Linux .NET 8; use `LibreMetaverse`.
--   **Git Exclude**: Use `echo '*' > .git/info/exclude` to keep the working directory clean of build artifacts without modifying `.gitignore`.
+-   **Platform Specifics**: Always copy `System.Drawing.Common.dll.linux` on Linux. Do not use the `OpenMetaverse.dll` from `bin/` for client development on Linux .NET 8; use `LibreMetaverse` (NuGet).
+-   **Ghost Sessions**: If a client disconnects abruptly (Ghost scenario), OpenSim keeps the session active in the DB. This prevents immediate re-login ("You appear to be already logged in"). The scenario runner cleans `bin/OpenSim.db` to ensure a fresh state for each run.

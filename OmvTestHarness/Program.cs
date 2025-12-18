@@ -43,8 +43,19 @@ namespace OmvTestHarness
             string lastName = "User";
             string password = "password";
             string loginURI = "http://localhost:9000/";
+            string mode = "standard";
 
-            MatingRitualLogger.Log("CLIENT", "LOGIN", "START", $"URI: {loginURI}, User: {firstName} {lastName}");
+            // Parse Args
+            for (int i = 0; i < args.Length; i++)
+            {
+                if (args[i] == "--mode" && i + 1 < args.Length) mode = args[i + 1];
+                if (args[i] == "--user" && i + 1 < args.Length) firstName = args[i + 1]; // Simple override, assumes "Last" name is fixed or handled otherwise, keeping it simple
+                if (args[i] == "--password" && i + 1 < args.Length) password = args[i + 1];
+            }
+
+            if (mode == "rejection") password = "badpassword";
+
+            MatingRitualLogger.Log("CLIENT", "LOGIN", "START", $"URI: {loginURI}, User: {firstName} {lastName}, Mode: {mode}");
 
             GridClient client = new GridClient();
 
@@ -58,6 +69,22 @@ namespace OmvTestHarness
             client.Network.SimConnected += (sender, e) =>
             {
                 MatingRitualLogger.Log("CLIENT", "UDP", "CONNECTED", $"Sim: {e.Simulator.Name}, IP: {e.Simulator.IPEndPoint}");
+
+                if (mode == "wallflower")
+                {
+                    // In "Wallflower" mode, we want to connect but then silence the heartbeats
+                    // LibreMetaverse usually sends AgentUpdate automatically. We need to suppress it.
+                    // The easiest way is to set the update interval to infinity or very high.
+                    // However, LibOMV settings are powerful.
+
+                    // Actually, let's just NOT respond to anything.
+                    // But LibOMV handles a lot in background threads.
+
+                    // Let's log that we are going silent.
+                    MatingRitualLogger.Log("CLIENT", "BEHAVIOR", "WALLFLOWER", "Disabling Agent Updates (Heartbeat)");
+                    client.Settings.SEND_AGENT_UPDATES = false; // Don't send updates
+                    client.Settings.SEND_PINGS = false; // Don't send pings
+                }
             };
 
             // Camping Spot 18: Region Handshake
@@ -87,15 +114,41 @@ namespace OmvTestHarness
             LoginParams loginParams = client.Network.DefaultLoginParams(firstName, lastName, password, "OmvTestHarness", "1.0.0");
             loginParams.URI = loginURI;
 
+            // Mode: Ghost - Disconnect immediately after HTTP login, before UDP?
+            // LibOMV Login() does XMLRPC then connects UDP. It's a blocking call that does both.
+            // To ghost, we might need to interrupt it, or...
+            // Actually, we can just close the client right after login returns success?
+            // The "Ghost" scenario implies we *don't* send UDP UseCircuitCode.
+            // But LibOMV sends it inside Login().
+
+            // For the sake of this harness, "Ghost" might just mean "Login, then Exit Immediately".
+            // If we want to *truly* ghost (get Circuit but don't use it), we'd need to modify LibOMV or do manual XMLRPC.
+            // Manual XMLRPC is too much work.
+            // Let's stick to "Login Success -> Immediate Exit" which means the server sees a login but maybe the UDP connection is cut short.
+
             if (client.Network.Login(loginParams))
             {
                 MatingRitualLogger.Log("CLIENT", "LOGIN", "SUCCESS", $"Agent: {client.Self.AgentID}");
 
-                // Stay connected for a bit
-                Thread.Sleep(5000);
+                if (mode == "ghost")
+                {
+                    MatingRitualLogger.Log("CLIENT", "BEHAVIOR", "GHOST", "Vanishing immediately...");
+                    Environment.Exit(0); // Harsh exit
+                }
 
-                MatingRitualLogger.Log("CLIENT", "LOGOUT", "INITIATE");
-                client.Network.Logout();
+                if (mode == "wallflower")
+                {
+                    // Wait for the server to timeout us
+                    MatingRitualLogger.Log("CLIENT", "BEHAVIOR", "WALLFLOWER", "Waiting for server timeout...");
+                    Thread.Sleep(90000); // 90 seconds (Server timeout default is often 60s)
+                }
+                else
+                {
+                    // Standard stay connected for a bit
+                    Thread.Sleep(5000);
+                    MatingRitualLogger.Log("CLIENT", "LOGOUT", "INITIATE");
+                    client.Network.Logout();
+                }
             }
             else
             {
