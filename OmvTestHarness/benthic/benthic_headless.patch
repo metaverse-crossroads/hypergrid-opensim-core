@@ -1,3 +1,13 @@
+diff --git a/Cargo.toml b/Cargo.toml
+index 2b182ff..18c39bc 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -4,4 +4,4 @@ resolver = "2"
+ members = [
+	"crates/core",
+	"crates/messages",
+-  "crates/ui", "crates/environment", "crates/agent", "crates/inventory"]
++  "crates/ui", "crates/environment", "crates/agent", "crates/inventory", "crates/headless_client"]
 diff --git a/crates/headless_client/Cargo.toml b/crates/headless_client/Cargo.toml
 new file mode 100644
 index 0000000..4e4cfe3
@@ -23,10 +33,10 @@ index 0000000..4e4cfe3
 +uuid = "1.0"
 diff --git a/crates/headless_client/src/main.rs b/crates/headless_client/src/main.rs
 new file mode 100644
-index 0000000..cd0feaa
+index 0000000..2b3406c
 --- /dev/null
 +++ b/crates/headless_client/src/main.rs
-@@ -0,0 +1,147 @@
+@@ -0,0 +1,156 @@
 +use actix::System;
 +use clap::Parser;
 +use crossbeam_channel::{unbounded, Sender};
@@ -64,9 +74,8 @@ index 0000000..cd0feaa
 +    env_logger::builder().filter_level(LevelFilter::Info).init();
 +    let args = Args::parse();
 +
-+    info!("Starting Headless Client for {} {}", args.first_name, args.last_name);
-+    info!("UI Port (Listener): {}", args.ui_port);
-+    info!("Core Port (Target): {}", args.core_port);
++    info!("The Suitor (Client) prepares to enter the Venue (Grid: {}).", args.grid_url);
++    info!("Suitor Identity: {} {}", args.first_name, args.last_name);
 +
 +    let (sender, receiver) = unbounded();
 +
@@ -84,18 +93,15 @@ index 0000000..cd0feaa
 +    let ui_port_arg = args.ui_port;
 +    std::thread::spawn(move || {
 +        System::new().block_on(async {
-+            // initialize(ui_to_server_socket, server_to_ui_socket)
-+            // Core listens on core_port (ui_to_server)
-+            // Core sends to ui_port (server_to_ui)
 +            match initialize(core_port_arg, ui_port_arg).await {
 +                Ok(handle) => {
 +                    match handle.await {
-+                        Ok(()) => info!("Core Listener exited successfully!"),
-+                        Err(e) => error!("Core Listener exited with error {:?}", e),
++                        Ok(()) => info!("The inner spirit (Core) has departed."),
++                        Err(e) => error!("The inner spirit (Core) faltered: {:?}", e),
 +                    };
 +                }
 +                Err(err) => {
-+                    error!("Failed to start client core: {:?}", err);
++                    error!("Failed to awaken the inner spirit (Core): {:?}", err);
 +                }
 +            }
 +        });
@@ -105,7 +111,7 @@ index 0000000..cd0feaa
 +    sleep(Duration::from_secs(2));
 +
 +    // Send Login Packet to Core
-+    info!("Sending Login Packet to Core at port {}", args.core_port);
++    info!("The Suitor approaches the Venue, offering credentials (Login Packet sent).");
 +    let login_msg = UIResponse::Login(Login {
 +        first: args.first_name,
 +        last: args.last_name,
@@ -121,30 +127,43 @@ index 0000000..cd0feaa
 +
 +    let socket = UdpSocket::bind("0.0.0.0:0").expect("Failed to bind sending socket");
 +    match socket.send_to(&packet_bytes, format!("127.0.0.1:{}", args.core_port)) {
-+        Ok(_) => info!("Login packet sent to core"),
-+        Err(e) => error!("Failed to send login packet: {:?}", e),
++        Ok(_) => info!("Credentials offered to the Core spirit."),
++        Err(e) => error!("Failed to offer credentials: {:?}", e),
 +    };
 +
 +    // Main loop: process events
-+    info!("Listening for events...");
++    info!("The Suitor waits in the foyer (Listening for events)...");
 +    loop {
 +        match receiver.recv() {
 +            Ok(event) => {
 +                match event {
 +                    UIMessage::LoginResponse(response) => {
-+                        info!("SUCCESS: Received Login Response: {:?}", response);
-+                        info!("Login Successful for {} {}", response.firstname, response.lastname);
++                        info!("The Venue welcomes the Suitor! The mating ritual begins.");
++                        info!("Suitor accepted as {} {}.", response.firstname, response.lastname);
 +                    }
 +                    UIMessage::Error(e) => {
-+                        error!("Received Session Error: {:?}", e);
++                        error!("The Venue rejects the Suitor. The dance ends before it began. Reason: {:?}", e);
++                    }
++                    UIMessage::CoarseLocationUpdate(loc) => {
++                        // Suppress noisy logs, or log gently
++                        // info!("The Suitor senses movement nearby.");
++                    }
++                    UIMessage::LandUpdate(_) => {
++                         info!("The Venue reveals its terrain (LandUpdate).");
++                    }
++                    UIMessage::MeshUpdate(mesh) => {
++                         info!("The Venue reveals a form (MeshUpdate: {:?}).", mesh.mesh_type);
++                    }
++                    UIMessage::CameraPosition(cam) => {
++                         info!("The Suitor glances around (Camera Position: {:?}).", cam.position);
 +                    }
 +                    other => {
-+                        info!("Event: {:?}", other);
++                        info!("The Venue whispers: {:?}", other);
 +                    }
 +                }
 +            }
 +            Err(e) => {
-+                error!("Receiver error: {:?}", e);
++                error!("The connection to the inner spirit is lost: {:?}", e);
 +                break;
 +            }
 +        }
@@ -155,21 +174,21 @@ index 0000000..cd0feaa
 +    let addr = format!("127.0.0.1:{}", port);
 +    let socket = tokio::net::UdpSocket::bind(&addr).await.expect("Failed to bind UDP socket");
 +
-+    info!("UI listening for core events on UDP: {}", addr);
++    // info!("UI listening for core events on UDP: {}", addr);
 +    loop {
 +        let mut buf = [0u8; 65535]; // Increased buffer size
 +        match socket.recv_from(&mut buf).await {
 +            Ok((n, _)) => {
 +                if let Ok(packet) = UIMessage::from_bytes(&buf[..n]) {
 +                    if let Err(e) = sender.send(packet) {
-+                        warn!("Failed to send packet to main thread: {:?}", e)
++                        warn!("Failed to pass message to consciousness: {:?}", e)
 +                    };
 +                } else {
-+                    warn!("Failed to parse UIMessage");
++                    // warn!("Failed to parse the whispers of the Core");
 +                }
 +            }
 +            Err(e) => {
-+                warn!("UI Failed to read buffer {}", e)
++                warn!("Failed to hear the Core: {}", e)
 +            }
 +        }
 +    }
