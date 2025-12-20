@@ -1,0 +1,22 @@
+diff --git a/OpenSim/Framework/Console/LocalConsole.cs b/OpenSim/Framework/Console/LocalConsole.cs
+index d5c55f1c4c5..1f125d54cc4 100755
+--- a/OpenSim/Framework/Console/LocalConsole.cs
++++ b/OpenSim/Framework/Console/LocalConsole.cs
+@@ -481,6 +481,17 @@ public override string ReadLine(string p, bool isCommand, bool e)
+             m_echo = e;
+             int historyLine = m_history.Count;
+
++            if (System.Console.IsInputRedirected)
++            {
++                 string line = System.Console.ReadLine();
++                 if (line == null)
++                 {
++                     Thread.Sleep(1000);
++                     return "";
++                 }
++                 return line;
++            }
++
+             lock (m_commandLine)
+             {
+                 SetCursorLeft(0); // Needed for mono

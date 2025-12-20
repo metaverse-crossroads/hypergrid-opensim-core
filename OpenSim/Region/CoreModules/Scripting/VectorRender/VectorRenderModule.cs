@@ -153,15 +153,8 @@ namespace OpenSim.Region.CoreModules.Scripting.VectorRender
             {
                 if(m_graph == null)
                 {
-                    try
-                    {
-                        Bitmap bitmap = new Bitmap(32, 32, PixelFormat.Format32bppArgb);
-                        m_graph = Graphics.FromImage(bitmap);
-                    }
-                    catch (Exception e)
-                    {
-                        m_log.ErrorFormat("[VECTORRENDERMODULE]: Failed to initialize GDI+: {0}", e.Message);
-                    }
+                    Bitmap bitmap = new Bitmap(32, 32, PixelFormat.Format32bppArgb);
+                    m_graph = Graphics.FromImage(bitmap);
                 }
             }
         }
