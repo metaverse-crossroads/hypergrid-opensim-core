@@ -25,17 +25,17 @@ To establish a standalone, autonomous research observatory for discerning critic
 - [x] **Milestone 1: Strategy Document**
     - Created `OmvTestHarness/Documentation/naturalist_observatory_strategy.md`.
 
-- [ ] **Milestone 1.5: Meta-Capture** (Current)
+- [x] **Milestone 1.5: Meta-Capture**
     - Create this `_work-in-progress_.md` document.
 
-- [ ] **Milestone 2: Physical Restructuring (Salvage & Liberation)**
-    - [ ] Create `targets/benthic-0.1.0`, `probes/benthic-0.1.0`, `probes/opensim-0.9.3`.
-    - [ ] Move Benthic repos (`metaverse_client`, `metaverse_mesh`, `benthic-serde-llsd`) to `targets/benthic-0.1.0/`.
-    - [ ] Move Benthic patch to `probes/benthic-0.1.0/headless_client.patch`.
-    - [ ] Move `DIRECT_PATH.md` to `targets/benthic-0.1.0/` and update paths.
-    - [ ] Copy OpenSim reference files (`LLLoginService.cs`, `LLUDPServer.cs`, `LLClientView.cs`) to `probes/opensim-0.9.3/`.
-    - [ ] Delete old `OmvTestHarness/benthic` directory.
-    - [ ] Submit.
+- [x] **Milestone 2: Physical Restructuring (Salvage & Liberation)**
+    - [x] Create `targets/benthic-0.1.0`, `probes/benthic-0.1.0`, `probes/opensim-0.9.3`.
+    - [x] Move Benthic repos (`metaverse_client`, `metaverse_mesh`, `benthic-serde-llsd`) to `targets/benthic-0.1.0/`.
+    - [x] Move Benthic patch to `probes/benthic-0.1.0/headless_client.patch`.
+    - [x] Move `DIRECT_PATH.md` to `targets/benthic-0.1.0/` and update paths.
+    - [x] Copy OpenSim reference files (`LLLoginService.cs`, `LLUDPServer.cs`, `LLClientView.cs`) to `probes/opensim-0.9.3/`.
+    - [x] Delete old `OmvTestHarness/benthic` directory.
+    - [x] Submit.
 
 - [ ] **Milestone 3: Acquisition & Foundation Verification**
     - [ ] Create `OmvTestHarness/observatory_init.sh` to verify/clone targets.
