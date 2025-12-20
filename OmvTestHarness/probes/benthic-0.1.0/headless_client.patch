@@ -1,0 +1,195 @@
+diff --git a/Cargo.toml b/Cargo.toml
+index 2b182ff..18c39bc 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -4,4 +4,4 @@ resolver = "2"
+ members = [
+	"crates/core",
+	"crates/messages",
+-  "crates/ui", "crates/environment", "crates/agent", "crates/inventory"]
++  "crates/ui", "crates/environment", "crates/agent", "crates/inventory", "crates/headless_client"]
+diff --git a/crates/headless_client/Cargo.toml b/crates/headless_client/Cargo.toml
+new file mode 100644
+index 0000000..4e4cfe3
+--- /dev/null
++++ b/crates/headless_client/Cargo.toml
+@@ -0,0 +1,17 @@
++[package]
++name = "headless_client"
++version = "0.1.0"
++edition = "2021"
++
++[dependencies]
++metaverse_core = { path = "../core" }
++metaverse_messages = { path = "../messages" }
++actix = "0.13"
++tokio = { version = "1", features = ["full"] }
++log = "0.4"
++env_logger = "0.11"
++clap = { version = "4.5", features = ["derive"] }
++anyhow = "1.0"
++crossbeam-channel = "0.5"
++tempfile = "3.10"
++uuid = "1.0"
+diff --git a/crates/headless_client/src/main.rs b/crates/headless_client/src/main.rs
+new file mode 100644
+index 0000000..2b3406c
+--- /dev/null
++++ b/crates/headless_client/src/main.rs
+@@ -0,0 +1,156 @@
++use actix::System;
++use clap::Parser;
++use crossbeam_channel::{unbounded, Sender};
++use log::{error, info, warn, LevelFilter};
++use metaverse_core::initialize::initialize;
++use metaverse_messages::packet::message::{UIMessage, UIResponse};
++use metaverse_messages::ui::login_event::Login;
++use std::net::UdpSocket;
++use std::thread::sleep;
++use std::time::Duration;
++
++#[derive(Parser, Debug)]
++#[command(author, version, about, long_about = None)]
++struct Args {
++    #[arg(short, long, default_value = "Test")]
++    first_name: String,
++
++    #[arg(short, long, default_value = "User")]
++    last_name: String,
++
++    #[arg(short, long, default_value = "password")]
++    password: String,
++
++    #[arg(long, default_value = "http://127.0.0.1:9000")]
++    grid_url: String,
++
++    #[arg(long, default_value_t = 12000)]
++    ui_port: u16,
++
++    #[arg(long, default_value_t = 12001)]
++    core_port: u16,
++}
++
++fn main() {
++    env_logger::builder().filter_level(LevelFilter::Info).init();
++    let args = Args::parse();
++
++    info!("The Suitor (Client) prepares to enter the Venue (Grid: {}).", args.grid_url);
++    info!("Suitor Identity: {} {}", args.first_name, args.last_name);
++
++    let (sender, receiver) = unbounded();
++
++    // Start the UI Listener (listens for events FROM Core)
++    let ui_port = args.ui_port;
++    std::thread::spawn(move || {
++        let rt = tokio::runtime::Runtime::new().expect("Failed to create Tokio runtime");
++        rt.block_on(async {
++            listen_for_core_events(ui_port, sender).await;
++        });
++    });
++
++    // Start the Core actor system
++    let core_port_arg = args.core_port;
++    let ui_port_arg = args.ui_port;
++    std::thread::spawn(move || {
++        System::new().block_on(async {
++            match initialize(core_port_arg, ui_port_arg).await {
++                Ok(handle) => {
++                    match handle.await {
++                        Ok(()) => info!("The inner spirit (Core) has departed."),
++                        Err(e) => error!("The inner spirit (Core) faltered: {:?}", e),
++                    };
++                }
++                Err(err) => {
++                    error!("Failed to awaken the inner spirit (Core): {:?}", err);
++                }
++            }
++        });
++    });
++
++    // Wait for system to spin up
++    sleep(Duration::from_secs(2));
++
++    // Send Login Packet to Core
++    info!("The Suitor approaches the Venue, offering credentials (Login Packet sent).");
++    let login_msg = UIResponse::Login(Login {
++        first: args.first_name,
++        last: args.last_name,
++        passwd: args.password,
++        start: "home".to_string(),
++        channel: "benthic_headless".to_string(),
++        agree_to_tos: true,
++        read_critical: true,
++        url: args.grid_url,
++    });
++
++    let packet_bytes = login_msg.to_bytes();
++
++    let socket = UdpSocket::bind("0.0.0.0:0").expect("Failed to bind sending socket");
++    match socket.send_to(&packet_bytes, format!("127.0.0.1:{}", args.core_port)) {
++        Ok(_) => info!("Credentials offered to the Core spirit."),
++        Err(e) => error!("Failed to offer credentials: {:?}", e),
++    };
++
++    // Main loop: process events
++    info!("The Suitor waits in the foyer (Listening for events)...");
++    loop {
++        match receiver.recv() {
++            Ok(event) => {
++                match event {
++                    UIMessage::LoginResponse(response) => {
++                        info!("The Venue welcomes the Suitor! The mating ritual begins.");
++                        info!("Suitor accepted as {} {}.", response.firstname, response.lastname);
++                    }
++                    UIMessage::Error(e) => {
++                        error!("The Venue rejects the Suitor. The dance ends before it began. Reason: {:?}", e);
++                    }
++                    UIMessage::CoarseLocationUpdate(loc) => {
++                        // Suppress noisy logs, or log gently
++                        // info!("The Suitor senses movement nearby.");
++                    }
++                    UIMessage::LandUpdate(_) => {
++                         info!("The Venue reveals its terrain (LandUpdate).");
++                    }
++                    UIMessage::MeshUpdate(mesh) => {
++                         info!("The Venue reveals a form (MeshUpdate: {:?}).", mesh.mesh_type);
++                    }
++                    UIMessage::CameraPosition(cam) => {
++                         info!("The Suitor glances around (Camera Position: {:?}).", cam.position);
++                    }
++                    other => {
++                        info!("The Venue whispers: {:?}", other);
++                    }
++                }
++            }
++            Err(e) => {
++                error!("The connection to the inner spirit is lost: {:?}", e);
++                break;
++            }
++        }
++    }
++}
++
++async fn listen_for_core_events(port: u16, sender: Sender<UIMessage>) {
++    let addr = format!("127.0.0.1:{}", port);
++    let socket = tokio::net::UdpSocket::bind(&addr).await.expect("Failed to bind UDP socket");
++
++    // info!("UI listening for core events on UDP: {}", addr);
++    loop {
++        let mut buf = [0u8; 65535]; // Increased buffer size
++        match socket.recv_from(&mut buf).await {
++            Ok((n, _)) => {
++                if let Ok(packet) = UIMessage::from_bytes(&buf[..n]) {
++                    if let Err(e) = sender.send(packet) {
++                        warn!("Failed to pass message to consciousness: {:?}", e)
++                    };
++                } else {
++                    // warn!("Failed to parse the whispers of the Core");
++                }
++            }
++            Err(e) => {
++                warn!("Failed to hear the Core: {}", e)
++            }
++        }
++    }
++}
